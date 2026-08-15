@@ -1,0 +1,19 @@
+{
+    "project": {
+        "name": "Enterprise SOC Automation",
+        "version": "1.0.0"
+    },
+
+    "detection": {
+        "brute_force_threshold": 3
+    },
+
+    "threat_intelligence": {
+        "enabled": true,
+        "max_age_days": 90
+    },
+
+    "evidence": {
+        "enabled": true
+    }
+}

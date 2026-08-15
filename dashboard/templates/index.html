@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Enterprise SOC Automation</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            <div class="logo-icon">🛡</div>
+
+            <div>
+                <h2>Enterprise SOC</h2>
+                <span>Security Operations</span>
+            </div>
+        </div>
+
+        <nav>
+
+            <a href="#" class="nav-item active">
+                <span>▣</span>
+                Dashboard
+            </a>
+
+            <a href="#alerts" class="nav-item">
+                <span>⚠</span>
+                Alerts
+            </a>
+
+            <a href="#investigations" class="nav-item">
+                <span>⌕</span>
+                Investigations
+            </a>
+
+            <a href="#responses" class="nav-item">
+                <span>⚡</span>
+                Responses
+            </a>
+
+        </nav>
+
+        <div class="system-status">
+
+            <div class="status-dot"></div>
+
+            <div>
+                <strong>System Online</strong>
+                <small>PostgreSQL Connected</small>
+            </div>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <!-- HEADER -->
+        <header class="topbar">
+
+            <div>
+                <h1>SOC Dashboard</h1>
+                <p>Security monitoring and incident response</p>
+            </div>
+
+            <button
+                class="refresh-btn"
+                onclick="loadDashboard()"
+            >
+                ↻ Refresh
+            </button>
+
+        </header>
+
+
+        <!-- SUMMARY CARDS -->
+        <section class="summary-grid">
+
+            <div class="summary-card">
+                <div class="card-label">Total Alerts</div>
+                <div id="total-alerts" class="card-value">-</div>
+            </div>
+
+            <div class="summary-card danger">
+                <div class="card-label">High Severity</div>
+                <div id="high-severity" class="card-value">-</div>
+            </div>
+
+            <div class="summary-card warning">
+                <div class="card-label">Investigating</div>
+                <div id="investigating" class="card-value">-</div>
+            </div>
+
+            <div class="summary-card success">
+                <div class="card-label">Resolved</div>
+                <div id="resolved" class="card-value">-</div>
+            </div>
+
+        </section>
+
+
+        <!-- STATUS -->
+        <section class="panel">
+
+            <div class="panel-header">
+
+                <div>
+                    <h2>Alert Status</h2>
+                    <p>Current security incident distribution</p>
+                </div>
+
+            </div>
+
+            <div class="status-grid">
+
+                <div class="status-box">
+                    <span class="status-name">Open</span>
+                    <strong id="open-count">0</strong>
+                </div>
+
+                <div class="status-box">
+                    <span class="status-name">Investigating</span>
+                    <strong id="investigating-count">0</strong>
+                </div>
+
+                <div class="status-box">
+                    <span class="status-name">Contained</span>
+                    <strong id="contained-count">0</strong>
+                </div>
+
+                <div class="status-box">
+                    <span class="status-name">Response Executed</span>
+                    <strong id="response-count">0</strong>
+                </div>
+
+                <div class="status-box">
+                    <span class="status-name">Resolved</span>
+                    <strong id="resolved-count">0</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ALERTS -->
+        <section id="alerts" class="panel">
+
+            <div class="panel-header">
+
+                <div>
+                    <h2>Security Alerts</h2>
+                    <p>Alerts loaded directly from PostgreSQL</p>
+                </div>
+
+                <span id="alert-count" class="badge">
+                    0 alerts
+                </span>
+
+            </div>
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+
+                    <tr>
+                        <th>Alert ID</th>
+                        <th>Severity</th>
+                        <th>Title</th>
+                        <th>Source IP</th>
+                        <th>Threat</th>
+                        <th>Status</th>
+                    </tr>
+
+                    </thead>
+
+                    <tbody id="alerts-table">
+
+                    <tr>
+                        <td colspan="6" class="loading">
+                            Loading alerts...
+                        </td>
+                    </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- SYSTEM INFORMATION -->
+        <section class="panel">
+
+            <div class="panel-header">
+
+                <div>
+                    <h2>System Information</h2>
+                    <p>Enterprise SOC Automation platform</p>
+                </div>
+
+            </div>
+
+            <div class="system-grid">
+
+                <div>
+                    <span>Backend</span>
+                    <strong>Flask</strong>
+                </div>
+
+                <div>
+                    <span>Database</span>
+                    <strong>PostgreSQL</strong>
+                </div>
+
+                <div>
+                    <span>Detection</span>
+                    <strong>SSH Brute Force</strong>
+                </div>
+
+                <div>
+                    <span>Response</span>
+                    <strong>Block Source IP</strong>
+                </div>
+
+                <div>
+                    <span>MITRE Mapping</span>
+                    <strong>T1110</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+
+</body>
+</html>
