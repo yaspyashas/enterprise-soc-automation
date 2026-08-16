@@ -845,3 +845,82 @@ tr:hover td {
         width: 100%;
     }
 }
+
+/* =========================================================
+   ALERT FILTERS
+   ========================================================= */
+
+.alert-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #0f172a;
+    border-bottom: 1px solid #1f2937;
+}
+
+.alert-filters label {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.alert-filters input,
+.alert-filters select {
+    height: 38px;
+    padding: 0 12px;
+    background: #111827;
+    color: #e5e7eb;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    outline: none;
+    font-size: 13px;
+}
+
+.alert-filters input {
+    width: 260px;
+}
+
+.alert-filters select {
+    min-width: 150px;
+}
+
+.alert-filters input::placeholder {
+    color: #64748b;
+}
+
+.alert-filters input:focus,
+.alert-filters select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.clear-filters-btn {
+    height: 38px;
+    padding: 0 14px;
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.clear-filters-btn:hover {
+    background: #334155;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   ALERT ROWS
+   ========================================================= */
+
+.alert-row {
+    cursor: pointer;
+}
+
+.alert-row:hover td {
+    background: #172033;
+}

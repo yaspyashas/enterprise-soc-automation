@@ -173,6 +173,61 @@
 
             </div>
 
+<!-- ALERT FILTERS -->
+
+<div class="alert-filters">
+
+    <div class="filter-group search-group">
+        <label for="alert-search">Search</label>
+
+        <input
+            type="text"
+            id="alert-search"
+            placeholder="Alert ID, IP, title or threat..."
+            oninput="filterAlerts()"
+        >
+    </div>
+
+    <div class="filter-group">
+        <label for="severity-filter">Severity</label>
+
+        <select
+            id="severity-filter"
+            onchange="filterAlerts()"
+        >
+            <option value="">All Severities</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label for="status-filter">Status</label>
+
+        <select
+            id="status-filter"
+            onchange="filterAlerts()"
+        >
+            <option value="">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="Investigating">Investigating</option>
+            <option value="Contained">Contained</option>
+            <option value="Response Executed">Response Executed</option>
+            <option value="Resolved">Resolved</option>
+        </select>
+    </div>
+
+    <button
+        type="button"
+        class="clear-filter-btn"
+        onclick="clearAlertFilters()"
+    >
+        Clear Filters
+    </button>
+
+</div>
+
             <div class="table-container">
 
                 <table>

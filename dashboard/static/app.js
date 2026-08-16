@@ -1,3 +1,5 @@
+let dashboardAlerts = [];
+
 async function loadDashboard() {
 
     try {
@@ -70,90 +72,11 @@ async function loadDashboard() {
         const alerts =
             alertsData.alerts || [];
 
-        document.getElementById("alert-count").textContent =
-            `${alerts.length} alerts`;
+        dashboardAlerts = alerts;
 
+        renderAlerts(dashboardAlerts);
 
-        const table =
-            document.getElementById("alerts-table");
-
-        table.innerHTML = "";
-
-
-        if (alerts.length === 0) {
-
-            table.innerHTML = `
-                <tr>
-                    <td colspan="6" class="loading">
-                        No alerts found.
-                    </td>
-                </tr>
-            `;
-
-            return;
-        }
-
-
-        // =====================================================
-        // CREATE ALERT ROWS
-        // =====================================================
-
-        alerts.forEach(alert => {
-
-            const row =
-                document.createElement("tr");
-
-            const severity =
-                String(alert.severity || "")
-                    .toLowerCase();
-
-            const status =
-                String(alert.status || "")
-                    .toLowerCase()
-                    .replace(/\s+/g, "-");
-
-
-            row.innerHTML = `
-
-                <td>
-                    <button
-                        class="alert-id-button"
-                        onclick="openAlert('${escapeJs(alert.alert_id)}')"
-                    >
-                        ${escapeHtml(alert.alert_id)}
-                    </button>
-                </td>
-
-                <td>
-                    <span class="severity-${severity}">
-                        ${escapeHtml(alert.severity)}
-                    </span>
-                </td>
-
-                <td>
-                    ${escapeHtml(alert.title)}
-                </td>
-
-                <td>
-                    ${escapeHtml(alert.source_ip || "-")}
-                </td>
-
-                <td>
-                    ${escapeHtml(alert.threat_type || "-")}
-                </td>
-
-                <td>
-                    <span class="status-${status}">
-                        ${escapeHtml(alert.status)}
-                    </span>
-                </td>
-
-            `;
-
-            table.appendChild(row);
-
-        });
-
+     
 
     } catch (error) {
 
@@ -174,6 +97,167 @@ async function loadDashboard() {
     }
 }
 
+function filterAlerts() {
+
+    const searchInput =
+        document.getElementById("alert-search");
+
+    const severityInput =
+        document.getElementById("severity-filter");
+
+    const statusInput =
+        document.getElementById("status-filter");
+
+    const search =
+        String(searchInput?.value || "")
+            .trim()
+            .toLowerCase();
+
+    const severity =
+        String(severityInput?.value || "")
+            .toLowerCase();
+
+    const status =
+        String(statusInput?.value || "")
+            .toLowerCase();
+
+    const filteredAlerts =
+        dashboardAlerts.filter(alert => {
+
+            const searchableText = [
+                alert.alert_id,
+                alert.source_ip,
+                alert.title,
+                alert.threat_type
+            ]
+                .map(value =>
+                    String(value || "").toLowerCase()
+                )
+                .join(" ");
+
+            const matchesSearch =
+                !search ||
+                searchableText.includes(search);
+
+            const matchesSeverity =
+                !severity ||
+                String(alert.severity || "")
+                    .toLowerCase() === severity;
+
+            const matchesStatus =
+                !status ||
+                String(alert.status || "")
+                    .toLowerCase() === status;
+
+            return (
+                matchesSearch &&
+                matchesSeverity &&
+                matchesStatus
+            );
+        });
+
+    renderAlerts(filteredAlerts);
+}
+
+
+function clearAlertFilters() {
+
+    document.getElementById(
+        "alert-search"
+    ).value = "";
+
+    document.getElementById(
+        "severity-filter"
+    ).value = "";
+
+    document.getElementById(
+        "status-filter"
+    ).value = "";
+
+    renderAlerts(dashboardAlerts);
+}
+
+
+function renderAlerts(alerts) {
+
+    const table =
+        document.getElementById("alerts-table");
+
+    const alertCount =
+        document.getElementById("alert-count");
+
+    alertCount.textContent =
+        `${alerts.length} alerts`;
+
+    table.innerHTML = "";
+
+    if (alerts.length === 0) {
+
+        table.innerHTML = `
+            <tr>
+                <td colspan="6" class="loading">
+                    No alerts match the selected filters.
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    alerts.forEach(alert => {
+
+        const row =
+            document.createElement("tr");
+
+        const severity =
+            String(alert.severity || "")
+                .toLowerCase();
+
+        const status =
+            String(alert.status || "")
+                .toLowerCase()
+                .replace(/\s+/g, "-");
+
+        row.innerHTML = `
+
+            <td>
+                <button
+                    class="alert-id-button"
+                    onclick="openAlert('${escapeJs(alert.alert_id)}')"
+                >
+                    ${escapeHtml(alert.alert_id)}
+                </button>
+            </td>
+
+            <td>
+                <span class="severity-${severity}">
+                    ${escapeHtml(alert.severity)}
+                </span>
+            </td>
+
+            <td>
+                ${escapeHtml(alert.title)}
+            </td>
+
+            <td>
+                ${escapeHtml(alert.source_ip || "-")}
+            </td>
+
+            <td>
+                ${escapeHtml(alert.threat_type || "-")}
+            </td>
+
+            <td>
+                <span class="status-${status}">
+                    ${escapeHtml(alert.status)}
+                </span>
+            </td>
+
+        `;
+
+        table.appendChild(row);
+    });
+}
 
 /*
  * =========================================================
