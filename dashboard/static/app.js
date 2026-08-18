@@ -1,58 +1,148 @@
+/*
+ * =========================================================
+ * ENTERPRISE SOC DASHBOARD
+ * =========================================================
+ */
+
 let dashboardAlerts = [];
+
+let currentSortColumn = null;
+let currentSortDirection = "asc";
+
+
+/*
+ * =========================================================
+ * LOAD DASHBOARD
+ * =========================================================
+ */
 
 async function loadDashboard() {
 
     try {
 
+        console.log("Loading dashboard...");
+
+
+        // =====================================================
+        // SHOW LOADING STATE
+        // =====================================================
+
+        const table =
+            document.getElementById("alerts-table");
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6" class="loading">
+                        Loading alerts...
+                    </td>
+                </tr>
+            `;
+        }
+
+
+        // =====================================================
+        // LOAD DASHBOARD SUMMARY
+        // =====================================================
+
         const summaryResponse =
-            await fetch("/api/dashboard/summary");
+            await fetch(
+                "/api/dashboard/summary",
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!summaryResponse.ok) {
+
+            throw new Error(
+                `Dashboard summary request failed: ${summaryResponse.status}`
+            );
+        }
+
 
         const summaryData =
             await summaryResponse.json();
 
+
         if (!summaryData.success) {
-            throw new Error("Unable to load dashboard summary");
+
+            throw new Error(
+                summaryData.message ||
+                "Unable to load dashboard summary"
+            );
         }
 
+
         const summary =
-            summaryData.summary;
+            summaryData.summary || {};
+
+
+        console.log(
+            "Dashboard summary:",
+            summary
+        );
 
 
         // =====================================================
         // SUMMARY CARDS
         // =====================================================
 
-        document.getElementById("total-alerts").textContent =
-            summary.total_alerts;
+        setText(
+            "total-alerts",
+            summary.total_alerts ?? 0
+        );
 
-        document.getElementById("high-severity").textContent =
-            summary.high_severity;
+        setText(
+            "high-severity",
+            summary.high_severity ?? 0
+        );
 
-        document.getElementById("investigating").textContent =
-            summary.investigating;
+        setText(
+            "investigating",
+            summary.investigating ?? 0
+        );
 
-        document.getElementById("resolved").textContent =
-            summary.resolved;
+        setText(
+            "resolved",
+            summary.resolved ?? 0
+        );
 
 
         // =====================================================
         // STATUS COUNTS
         // =====================================================
 
-        document.getElementById("open-count").textContent =
-            summary.open;
+        setText(
+            "open-count",
+            summary.open ?? 0
+        );
 
-        document.getElementById("investigating-count").textContent =
-            summary.investigating;
+        setText(
+            "investigating-count",
+            summary.investigating ?? 0
+        );
 
-        document.getElementById("contained-count").textContent =
-            summary.contained;
+        setText(
+            "contained-count",
+            summary.contained ?? 0
+        );
 
-        document.getElementById("response-count").textContent =
-            summary.response_executed;
+        setText(
+            "response-count",
+            summary.response_executed ?? 0
+        );
 
-        document.getElementById("resolved-count").textContent =
-            summary.resolved;
+        setText(
+            "resolved-count",
+            summary.resolved ?? 0
+        );
 
 
         // =====================================================
@@ -60,23 +150,60 @@ async function loadDashboard() {
         // =====================================================
 
         const alertsResponse =
-            await fetch("/api/alerts");
+            await fetch(
+                "/api/alerts",
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!alertsResponse.ok) {
+
+            throw new Error(
+                `Alerts request failed: ${alertsResponse.status}`
+            );
+        }
+
 
         const alertsData =
             await alertsResponse.json();
 
+
         if (!alertsData.success) {
-            throw new Error("Unable to load alerts");
+
+            throw new Error(
+                alertsData.message ||
+                "Unable to load alerts"
+            );
         }
 
+
         const alerts =
-            alertsData.alerts || [];
+            Array.isArray(alertsData.alerts)
+                ? alertsData.alerts
+                : [];
 
-        dashboardAlerts = alerts;
 
-        renderAlerts(dashboardAlerts);
+        dashboardAlerts =
+            alerts;
 
-     
+
+        console.log(
+            `Loaded ${dashboardAlerts.length} alerts`
+        );
+
+
+        // =====================================================
+        // RENDER ALERTS
+        // =====================================================
+
+        filterAlerts();
+
 
     } catch (error) {
 
@@ -85,113 +212,340 @@ async function loadDashboard() {
             error
         );
 
-        document.getElementById(
-            "alerts-table"
-        ).innerHTML = `
-            <tr>
-                <td colspan="6" class="loading">
-                    Failed to load dashboard data.
-                </td>
-            </tr>
-        `;
+
+        setText(
+            "total-alerts",
+            "-"
+        );
+
+        setText(
+            "high-severity",
+            "-"
+        );
+
+        setText(
+            "investigating",
+            "-"
+        );
+
+        setText(
+            "resolved",
+            "-"
+        );
+
+
+        const table =
+            document.getElementById(
+                "alerts-table"
+            );
+
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6" class="loading">
+                        Failed to load dashboard data.
+                    </td>
+                </tr>
+            `;
+        }
+
+
+        const alertCount =
+            document.getElementById(
+                "alert-count"
+            );
+
+
+        if (alertCount) {
+
+            alertCount.textContent =
+                "0 alerts";
+        }
     }
 }
+
+
+/*
+ * =========================================================
+ * SEARCH + FILTER ALERTS
+ * =========================================================
+ */
 
 function filterAlerts() {
 
     const searchInput =
-        document.getElementById("alert-search");
+        document.getElementById(
+            "alert-search"
+        );
+
 
     const severityInput =
-        document.getElementById("severity-filter");
+        document.getElementById(
+            "severity-filter"
+        );
+
 
     const statusInput =
-        document.getElementById("status-filter");
+        document.getElementById(
+            "status-filter"
+        );
+
 
     const search =
-        String(searchInput?.value || "")
+        String(
+            searchInput?.value || ""
+        )
             .trim()
             .toLowerCase();
 
+
     const severity =
-        String(severityInput?.value || "")
+        String(
+            severityInput?.value || ""
+        )
+            .trim()
             .toLowerCase();
+
 
     const status =
-        String(statusInput?.value || "")
+        String(
+            statusInput?.value || ""
+        )
+            .trim()
             .toLowerCase();
 
+
     const filteredAlerts =
-        dashboardAlerts.filter(alert => {
+        dashboardAlerts.filter(
+            alert => {
 
-            const searchableText = [
-                alert.alert_id,
-                alert.source_ip,
-                alert.title,
-                alert.threat_type
-            ]
-                .map(value =>
-                    String(value || "").toLowerCase()
-                )
-                .join(" ");
 
-            const matchesSearch =
-                !search ||
-                searchableText.includes(search);
+                // =================================================
+                // SEARCH
+                // =================================================
 
-            const matchesSeverity =
-                !severity ||
-                String(alert.severity || "")
-                    .toLowerCase() === severity;
+                const searchableText = [
 
-            const matchesStatus =
-                !status ||
-                String(alert.status || "")
-                    .toLowerCase() === status;
+                    alert.alert_id,
 
-            return (
-                matchesSearch &&
-                matchesSeverity &&
-                matchesStatus
-            );
-        });
+                    alert.source_ip,
 
-    renderAlerts(filteredAlerts);
+                    alert.title,
+
+                    alert.threat_type,
+
+                    alert.description,
+
+                    alert.response_action,
+
+                    alert.response_status
+
+                ]
+                    .map(
+                        value =>
+                            String(
+                                value ?? ""
+                            ).toLowerCase()
+                    )
+                    .join(" ");
+
+
+                const matchesSearch =
+                    !search ||
+                    searchableText.includes(
+                        search
+                    );
+
+
+                // =================================================
+                // SEVERITY
+                // =================================================
+
+                const alertSeverity =
+                    String(
+                        alert.severity ?? ""
+                    )
+                        .trim()
+                        .toLowerCase();
+
+
+                const matchesSeverity =
+                    !severity ||
+                    alertSeverity === severity;
+
+
+                // =================================================
+                // STATUS
+                // =================================================
+
+                const alertStatus =
+                    String(
+                        alert.status ?? ""
+                    )
+                        .trim()
+                        .toLowerCase();
+
+
+                const matchesStatus =
+                    !status ||
+                    alertStatus === status;
+
+
+                return (
+                    matchesSearch &&
+                    matchesSeverity &&
+                    matchesStatus
+                );
+            }
+        );
+
+
+    renderAlerts(
+        filteredAlerts
+    );
 }
 
+
+/*
+ * =========================================================
+ * CLEAR FILTERS
+ * =========================================================
+ */
 
 function clearAlertFilters() {
 
-    document.getElementById(
-        "alert-search"
-    ).value = "";
+    const searchInput =
+        document.getElementById(
+            "alert-search"
+        );
 
-    document.getElementById(
-        "severity-filter"
-    ).value = "";
 
-    document.getElementById(
-        "status-filter"
-    ).value = "";
+    const severityInput =
+        document.getElementById(
+            "severity-filter"
+        );
 
-    renderAlerts(dashboardAlerts);
+
+    const statusInput =
+        document.getElementById(
+            "status-filter"
+        );
+
+
+    if (searchInput) {
+
+        searchInput.value =
+            "";
+    }
+
+
+    if (severityInput) {
+
+        severityInput.value =
+            "";
+    }
+
+
+    if (statusInput) {
+
+        statusInput.value =
+            "";
+    }
+
+
+    renderAlerts(
+        dashboardAlerts
+    );
 }
 
+
+/*
+ * =========================================================
+ * SORT ALERTS
+ * =========================================================
+ */
+
+function sortAlerts(column) {
+
+    if (
+        currentSortColumn === column
+    ) {
+
+        currentSortDirection =
+            currentSortDirection === "asc"
+                ? "desc"
+                : "asc";
+
+    } else {
+
+        currentSortColumn =
+            column;
+
+        currentSortDirection =
+            "asc";
+    }
+
+
+    console.log(
+        `Sorting ${column} ${currentSortDirection}`
+    );
+
+
+    filterAlerts();
+}
+
+
+/*
+ * =========================================================
+ * RENDER ALERTS
+ * =========================================================
+ */
 
 function renderAlerts(alerts) {
 
     const table =
-        document.getElementById("alerts-table");
+        document.getElementById(
+            "alerts-table"
+        );
+
 
     const alertCount =
-        document.getElementById("alert-count");
+        document.getElementById(
+            "alert-count"
+        );
 
-    alertCount.textContent =
-        `${alerts.length} alerts`;
 
-    table.innerHTML = "";
+    if (!table) {
 
-    if (alerts.length === 0) {
+        console.error(
+            "alerts-table element not found"
+        );
+
+        return;
+    }
+
+
+    if (alertCount) {
+
+        alertCount.textContent =
+            `${alerts.length} alerts`;
+    }
+
+
+    table.innerHTML =
+        "";
+
+
+    // =====================================================
+    // NO RESULTS
+    // =====================================================
+
+    if (
+        !Array.isArray(alerts) ||
+        alerts.length === 0
+    ) {
 
         table.innerHTML = `
             <tr>
@@ -204,60 +558,309 @@ function renderAlerts(alerts) {
         return;
     }
 
-    alerts.forEach(alert => {
 
-        const row =
-            document.createElement("tr");
+    // =====================================================
+    // SORT ALERTS
+    // =====================================================
 
-        const severity =
-            String(alert.severity || "")
-                .toLowerCase();
+    const sortedAlerts =
+        [...alerts].sort(
+            (a, b) => {
 
-        const status =
-            String(alert.status || "")
-                .toLowerCase()
-                .replace(/\s+/g, "-");
 
-        row.innerHTML = `
+                if (!currentSortColumn) {
 
-            <td>
-                <button
-                    class="alert-id-button"
-                    onclick="openAlert('${escapeJs(alert.alert_id)}')"
-                >
-                    ${escapeHtml(alert.alert_id)}
-                </button>
-            </td>
+                    return 0;
+                }
 
-            <td>
-                <span class="severity-${severity}">
-                    ${escapeHtml(alert.severity)}
-                </span>
-            </td>
 
-            <td>
-                ${escapeHtml(alert.title)}
-            </td>
+                let valueA =
+                    a[currentSortColumn];
 
-            <td>
-                ${escapeHtml(alert.source_ip || "-")}
-            </td>
+                let valueB =
+                    b[currentSortColumn];
 
-            <td>
-                ${escapeHtml(alert.threat_type || "-")}
-            </td>
 
-            <td>
-                <span class="status-${status}">
-                    ${escapeHtml(alert.status)}
-                </span>
-            </td>
+                // =============================================
+                // SEVERITY SORT
+                // =============================================
 
-        `;
+                if (
+                    currentSortColumn ===
+                    "severity"
+                ) {
 
-        table.appendChild(row);
-    });
+                    const severityOrder = {
+
+                        high: 3,
+
+                        medium: 2,
+
+                        low: 1
+
+                    };
+
+
+                    valueA =
+                        severityOrder[
+                            String(
+                                valueA ?? ""
+                            )
+                                .toLowerCase()
+                        ] || 0;
+
+
+                    valueB =
+                        severityOrder[
+                            String(
+                                valueB ?? ""
+                            )
+                                .toLowerCase()
+                        ] || 0;
+                }
+
+
+                // =============================================
+                // STATUS SORT
+                // =============================================
+
+                else if (
+                    currentSortColumn ===
+                    "status"
+                ) {
+
+                    const statusOrder = {
+
+                        open: 1,
+
+                        investigating: 2,
+
+                        contained: 3,
+
+                        "response executed": 4,
+
+                        resolved: 5
+
+                    };
+
+
+                    valueA =
+                        statusOrder[
+                            String(
+                                valueA ?? ""
+                            )
+                                .toLowerCase()
+                        ] || 0;
+
+
+                    valueB =
+                        statusOrder[
+                            String(
+                                valueB ?? ""
+                            )
+                                .toLowerCase()
+                        ] || 0;
+                }
+
+
+                // =============================================
+                // ALERT ID SORT
+                // =============================================
+
+                else if (
+                    currentSortColumn ===
+                    "alert_id"
+                ) {
+
+                    const result =
+                        String(
+                            valueA ?? ""
+                        ).localeCompare(
+                            String(
+                                valueB ?? ""
+                            ),
+                            undefined,
+                            {
+                                numeric: true,
+                                sensitivity: "base"
+                            }
+                        );
+
+
+                    return currentSortDirection ===
+                        "asc"
+                        ? result
+                        : -result;
+                }
+
+
+                // =============================================
+                // NORMAL TEXT SORT
+                // =============================================
+
+                else {
+
+                    valueA =
+                        String(
+                            valueA ?? ""
+                        )
+                            .toLowerCase();
+
+
+                    valueB =
+                        String(
+                            valueB ?? ""
+                        )
+                            .toLowerCase();
+                }
+
+
+                // =============================================
+                // FINAL COMPARISON
+                // =============================================
+
+                if (
+                    valueA < valueB
+                ) {
+
+                    return currentSortDirection ===
+                        "asc"
+                        ? -1
+                        : 1;
+                }
+
+
+                if (
+                    valueA > valueB
+                ) {
+
+                    return currentSortDirection ===
+                        "asc"
+                        ? 1
+                        : -1;
+                }
+
+
+                return 0;
+            }
+        );
+
+
+    // =====================================================
+    // RENDER ROWS
+    // =====================================================
+
+    sortedAlerts.forEach(
+        alert => {
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            const severity =
+                String(
+                    alert.severity ?? ""
+                )
+                    .toLowerCase()
+                    .trim();
+
+
+            const status =
+                String(
+                    alert.status ?? ""
+                )
+                    .toLowerCase()
+                    .trim()
+                    .replace(
+                        /\s+/g,
+                        "-"
+                    );
+
+
+            row.innerHTML = `
+
+                <td>
+
+                    <button
+                        class="alert-id-button"
+                        onclick="openAlert('${escapeJs(alert.alert_id)}')"
+                    >
+                        ${escapeHtml(
+                            alert.alert_id
+                        )}
+                    </button>
+
+                </td>
+
+
+                <td>
+
+                    <span
+                        class="severity-${escapeHtml(
+                            severity
+                        )}"
+                    >
+                        ${escapeHtml(
+                            alert.severity || "-"
+                        )}
+                    </span>
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHtml(
+                        alert.title || "-"
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHtml(
+                        alert.source_ip || "-"
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHtml(
+                        alert.threat_type || "-"
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    <span
+                        class="status-${escapeHtml(
+                            status
+                        )}"
+                    >
+                        ${escapeHtml(
+                            alert.status || "-"
+                        )}
+                    </span>
+
+                </td>
+
+            `;
+
+
+            table.appendChild(
+                row
+            );
+        }
+    );
 }
+
 
 /*
  * =========================================================
@@ -277,21 +880,39 @@ async function openAlert(alertId) {
 
         const response =
             await fetch(
-                `/api/alerts/${encodeURIComponent(alertId)}`
+                `/api/alerts/${encodeURIComponent(alertId)}`,
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    },
+                    cache: "no-store"
+                }
             );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Request failed: ${response.status}`
+            );
+        }
 
 
         const data =
             await response.json();
 
 
-        if (!response.ok || !data.success) {
+        if (
+            !data.success ||
+            !data.alert
+        ) {
 
             throw new Error(
                 data.message ||
                 `Unable to load alert ${alertId}`
             );
-
         }
 
 
@@ -307,6 +928,7 @@ async function openAlert(alertId) {
             error
         );
 
+
         alert(
             `Unable to open ${alertId}.\n\n${error.message}`
         );
@@ -316,7 +938,7 @@ async function openAlert(alertId) {
 
 /*
  * =========================================================
- * ALERT DETAILS MODAL
+ * SHOW ALERT DETAILS MODAL
  * =========================================================
  */
 
@@ -328,13 +950,21 @@ function showAlertDetails(alert) {
         );
 
 
+    // =====================================================
+    // CREATE MODAL IF IT DOES NOT EXIST
+    // =====================================================
+
     if (!modal) {
 
         modal =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         modal.id =
             "alert-details-modal";
+
 
         modal.className =
             "alert-modal";
@@ -346,16 +976,33 @@ function showAlertDetails(alert) {
     }
 
 
+    // =====================================================
+    // NORMALIZE VALUES
+    // =====================================================
+
     const severity =
-        String(alert.severity || "")
-            .toLowerCase();
+        String(
+            alert.severity ?? ""
+        )
+            .toLowerCase()
+            .trim();
 
 
     const status =
-        String(alert.status || "")
+        String(
+            alert.status ?? ""
+        )
             .toLowerCase()
-            .replace(/\s+/g, "-");
+            .trim()
+            .replace(
+                /\s+/g,
+                "-"
+            );
 
+
+    // =====================================================
+    // INVESTIGATION HISTORY
+    // =====================================================
 
     const investigationHistory =
         Array.isArray(
@@ -366,52 +1013,76 @@ function showAlertDetails(alert) {
 
 
     let historyHtml =
-        "<p>No investigation history.</p>";
+        `
+            <p>
+                No investigation history.
+            </p>
+        `;
 
 
-    if (investigationHistory.length > 0) {
+    if (
+        investigationHistory.length > 0
+    ) {
 
         historyHtml =
             investigationHistory
-                .map(entry => {
+                .map(
+                    entry => {
 
-                    return `
-                        <div class="history-entry">
+                        return `
 
-                            <strong>
-                                ${escapeHtml(
-                                    entry.action || "Action"
-                                )}
-                            </strong>
+                            <div class="history-entry">
 
-                            <span>
-                                ${escapeHtml(
-                                    entry.timestamp || "-"
-                                )}
-                            </span>
+                                <strong>
+                                    ${escapeHtml(
+                                        entry.action ||
+                                        "Action"
+                                    )}
+                                </strong>
 
-                            <p>
-                                ${escapeHtml(
-                                    entry.details || "-"
-                                )}
-                            </p>
 
-                        </div>
-                    `;
+                                <span>
+                                    ${escapeHtml(
+                                        entry.timestamp ||
+                                        "-"
+                                    )}
+                                </span>
 
-                })
+
+                                <p>
+                                    ${escapeHtml(
+                                        entry.details ||
+                                        "-"
+                                    )}
+                                </p>
+
+                            </div>
+
+                        `;
+                    }
+                )
                 .join("");
     }
 
 
+    // =====================================================
+    // MODAL HTML
+    // =====================================================
+
     modal.innerHTML = `
 
-        <div class="alert-modal-backdrop"
-             onclick="closeAlertDetails()">
-        </div>
+        <div
+            class="alert-modal-backdrop"
+            onclick="closeAlertDetails()"
+        ></div>
 
 
         <div class="alert-modal-content">
+
+
+            <!-- =========================================
+                 HEADER
+            ========================================== -->
 
             <div class="alert-modal-header">
 
@@ -421,15 +1092,19 @@ function showAlertDetails(alert) {
                         SECURITY ALERT
                     </span>
 
+
                     <h2>
                         ${escapeHtml(
-                            alert.alert_id
+                            alert.alert_id ||
+                            "-"
                         )}
                     </h2>
 
+
                     <p>
                         ${escapeHtml(
-                            alert.title || "-"
+                            alert.title ||
+                            "-"
                         )}
                     </p>
 
@@ -439,14 +1114,17 @@ function showAlertDetails(alert) {
                 <button
                     class="modal-close"
                     onclick="closeAlertDetails()"
+                    aria-label="Close"
                 >
-                    ×
+                    &times;
                 </button>
 
             </div>
 
 
-            <!-- STATUS -->
+            <!-- =========================================
+                 STATUS
+            ========================================== -->
 
             <div class="alert-detail-status">
 
@@ -454,9 +1132,15 @@ function showAlertDetails(alert) {
                     Severity
                 </span>
 
-                <strong class="severity-${severity}">
+
+                <strong
+                    class="severity-${escapeHtml(
+                        severity
+                    )}"
+                >
                     ${escapeHtml(
-                        alert.severity || "-"
+                        alert.severity ||
+                        "-"
                     )}
                 </strong>
 
@@ -465,16 +1149,24 @@ function showAlertDetails(alert) {
                     Status
                 </span>
 
-                <strong class="status-${status}">
+
+                <strong
+                    class="status-${escapeHtml(
+                        status
+                    )}"
+                >
                     ${escapeHtml(
-                        alert.status || "-"
+                        alert.status ||
+                        "-"
                     )}
                 </strong>
 
             </div>
 
 
-            <!-- ALERT INFORMATION -->
+            <!-- =========================================
+                 ALERT INFORMATION
+            ========================================== -->
 
             <div class="detail-section">
 
@@ -485,63 +1177,100 @@ function showAlertDetails(alert) {
 
                 <div class="detail-grid">
 
+
                     <div>
-                        <span>Alert ID</span>
+
+                        <span>
+                            Alert ID
+                        </span>
+
                         <strong>
                             ${escapeHtml(
-                                alert.alert_id
+                                alert.alert_id ||
+                                "-"
                             )}
                         </strong>
+
                     </div>
 
 
                     <div>
-                        <span>Threat Type</span>
+
+                        <span>
+                            Threat Type
+                        </span>
+
                         <strong>
                             ${escapeHtml(
-                                alert.threat_type || "-"
+                                alert.threat_type ||
+                                "-"
                             )}
                         </strong>
+
                     </div>
 
 
                     <div>
-                        <span>Source IP</span>
+
+                        <span>
+                            Source IP
+                        </span>
+
                         <strong>
                             ${escapeHtml(
-                                alert.source_ip || "-"
+                                alert.source_ip ||
+                                "-"
                             )}
                         </strong>
+
                     </div>
 
 
                     <div>
-                        <span>Timestamp</span>
+
+                        <span>
+                            Timestamp
+                        </span>
+
                         <strong>
                             ${escapeHtml(
-                                alert.timestamp || "-"
+                                alert.timestamp ||
+                                "-"
                             )}
                         </strong>
+
                     </div>
 
 
                     <div>
-                        <span>Response Action</span>
+
+                        <span>
+                            Response Action
+                        </span>
+
                         <strong>
                             ${escapeHtml(
-                                alert.response_action || "-"
+                                alert.response_action ||
+                                "-"
                             )}
                         </strong>
+
                     </div>
 
 
                     <div>
-                        <span>Response Status</span>
+
+                        <span>
+                            Response Status
+                        </span>
+
                         <strong>
                             ${escapeHtml(
-                                alert.response_status || "-"
+                                alert.response_status ||
+                                "-"
                             )}
                         </strong>
+
                     </div>
 
                 </div>
@@ -549,7 +1278,9 @@ function showAlertDetails(alert) {
             </div>
 
 
-            <!-- DESCRIPTION -->
+            <!-- =========================================
+                 DESCRIPTION
+            ========================================== -->
 
             <div class="detail-section">
 
@@ -557,16 +1288,20 @@ function showAlertDetails(alert) {
                     Description
                 </h3>
 
+
                 <p class="detail-description">
                     ${escapeHtml(
-                        alert.description || "-"
+                        alert.description ||
+                        "-"
                     )}
                 </p>
 
             </div>
 
 
-            <!-- MITRE -->
+            <!-- =========================================
+                 MITRE ATT&CK
+            ========================================== -->
 
             <div class="detail-section">
 
@@ -574,14 +1309,19 @@ function showAlertDetails(alert) {
                     MITRE ATT&CK
                 </h3>
 
+
                 <pre class="json-box">${escapeHtml(
-                    formatJson(alert.mitre_attack)
+                    formatJson(
+                        alert.mitre_attack
+                    )
                 )}</pre>
 
             </div>
 
 
-            <!-- IOC -->
+            <!-- =========================================
+                 IOC ENRICHMENT
+            ========================================== -->
 
             <div class="detail-section">
 
@@ -589,20 +1329,26 @@ function showAlertDetails(alert) {
                     IOC Enrichment
                 </h3>
 
+
                 <pre class="json-box">${escapeHtml(
-                    formatJson(alert.ioc_enrichment)
+                    formatJson(
+                        alert.ioc_enrichment
+                    )
                 )}</pre>
 
             </div>
 
 
-            <!-- INVESTIGATION HISTORY -->
+            <!-- =========================================
+                 INVESTIGATION HISTORY
+            ========================================== -->
 
             <div class="detail-section">
 
                 <h3>
                     Investigation History
                 </h3>
+
 
                 <div class="history-container">
 
@@ -613,7 +1359,9 @@ function showAlertDetails(alert) {
             </div>
 
 
-            <!-- ANALYST NOTES -->
+            <!-- =========================================
+                 ANALYST NOTES
+            ========================================== -->
 
             <div class="detail-section">
 
@@ -621,18 +1369,23 @@ function showAlertDetails(alert) {
                     Analyst Notes
                 </h3>
 
+
                 <p class="detail-description">
                     ${escapeHtml(
-                        alert.analyst_notes || "-"
+                        alert.analyst_notes ||
+                        "-"
                     )}
                 </p>
 
             </div>
 
 
-            <!-- ACTIONS -->
+            <!-- =========================================
+                 ACTIONS
+            ========================================== -->
 
             <div class="alert-actions">
+
 
                 <button
                     class="action-button investigate"
@@ -673,11 +1426,18 @@ function showAlertDetails(alert) {
                     Resolve Alert
                 </button>
 
+
             </div>
 
+
         </div>
+
     `;
 
+
+    // =====================================================
+    // SHOW MODAL
+    // =====================================================
 
     modal.classList.add(
         "visible"
@@ -714,7 +1474,9 @@ function closeAlertDetails() {
  * =========================================================
  */
 
-async function investigateAlert(alertId) {
+async function investigateAlert(
+    alertId
+) {
 
     await executeAlertAction(
         `/api/alerts/${encodeURIComponent(alertId)}/investigate`,
@@ -729,7 +1491,9 @@ async function investigateAlert(alertId) {
  * =========================================================
  */
 
-async function containAlert(alertId) {
+async function containAlert(
+    alertId
+) {
 
     await executeAlertAction(
         `/api/alerts/${encodeURIComponent(alertId)}/contain`,
@@ -744,7 +1508,9 @@ async function containAlert(alertId) {
  * =========================================================
  */
 
-async function collectEvidence(alertId) {
+async function collectEvidence(
+    alertId
+) {
 
     await executeAlertAction(
         `/api/alerts/${encodeURIComponent(alertId)}/evidence`,
@@ -759,7 +1525,9 @@ async function collectEvidence(alertId) {
  * =========================================================
  */
 
-async function executeResponse(alertId) {
+async function executeResponse(
+    alertId
+) {
 
     await executeAlertAction(
         `/api/alerts/${encodeURIComponent(alertId)}/response`,
@@ -774,7 +1542,9 @@ async function executeResponse(alertId) {
  * =========================================================
  */
 
-async function resolveAlert(alertId) {
+async function resolveAlert(
+    alertId
+) {
 
     await executeAlertAction(
         `/api/alerts/${encodeURIComponent(alertId)}/resolve`,
@@ -796,11 +1566,21 @@ async function executeAlertAction(
 
     try {
 
+        console.log(
+            "Executing action:",
+            url
+        );
+
+
         const response =
             await fetch(
                 url,
                 {
-                    method: "POST"
+                    method: "POST",
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
                 }
             );
 
@@ -809,13 +1589,22 @@ async function executeAlertAction(
             await response.json();
 
 
-        if (!response.ok || !data.success) {
+        if (
+            !response.ok ||
+            !data.success
+        ) {
 
             throw new Error(
                 data.message ||
                 "Action failed"
             );
         }
+
+
+        console.log(
+            "Action successful:",
+            successMessage
+        );
 
 
         alert(
@@ -825,6 +1614,10 @@ async function executeAlertAction(
 
         closeAlertDetails();
 
+
+        // =====================================================
+        // RELOAD DASHBOARD
+        // =====================================================
 
         await loadDashboard();
 
@@ -850,12 +1643,15 @@ async function executeAlertAction(
  * =========================================================
  */
 
-function formatJson(value) {
+function formatJson(
+    value
+) {
 
     if (
         value === null ||
         value === undefined
     ) {
+
         return "-";
     }
 
@@ -889,7 +1685,9 @@ function formatJson(value) {
 
     } catch {
 
-        return String(value);
+        return String(
+            value
+        );
     }
 }
 
@@ -900,13 +1698,19 @@ function formatJson(value) {
  * =========================================================
  */
 
-function escapeHtml(value) {
+function escapeHtml(
+    value
+) {
 
     const div =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
+
 
     div.textContent =
         value ?? "";
+
 
     return div.innerHTML;
 }
@@ -918,22 +1722,157 @@ function escapeHtml(value) {
  * =========================================================
  */
 
-function escapeJs(value) {
+function escapeJs(
+    value
+) {
 
     return String(
         value ?? ""
     )
-        .replace(/\\/g, "\\\\")
-        .replace(/'/g, "\\'");
+        .replace(
+            /\\/g,
+            "\\\\"
+        )
+        .replace(
+            /'/g,
+            "\\'"
+        );
 }
 
 
 /*
  * =========================================================
- * LOAD DASHBOARD
- * ========================================================= */
+ * SET TEXT HELPER
+ * =========================================================
+ */
+
+function setText(
+    elementId,
+    value
+) {
+
+    const element =
+        document.getElementById(
+            elementId
+        );
+
+
+    if (element) {
+
+        element.textContent =
+            value;
+    }
+}
+
+
+/*
+ * =========================================================
+ * REFRESH BUTTON
+ * =========================================================
+ */
+
+function refreshDashboard() {
+
+    loadDashboard();
+}
+
+
+/*
+ * =========================================================
+ * INITIALIZE DASHBOARD
+ * =========================================================
+ */
 
 document.addEventListener(
     "DOMContentLoaded",
-    loadDashboard
+    () => {
+
+        console.log(
+            "SOC Dashboard initialized"
+        );
+
+
+        // =============================================
+        // LOAD INITIAL DATA
+        // =============================================
+
+        loadDashboard();
+
+
+        // =============================================
+        // SEARCH FILTER
+        // =============================================
+
+        const searchInput =
+            document.getElementById(
+                "alert-search"
+            );
+
+
+        if (searchInput) {
+
+            searchInput.addEventListener(
+                "input",
+                filterAlerts
+            );
+        }
+
+
+        // =============================================
+        // SEVERITY FILTER
+        // =============================================
+
+        const severityFilter =
+            document.getElementById(
+                "severity-filter"
+            );
+
+
+        if (severityFilter) {
+
+            severityFilter.addEventListener(
+                "change",
+                filterAlerts
+            );
+        }
+
+
+        // =============================================
+        // STATUS FILTER
+        // =============================================
+
+        const statusFilter =
+            document.getElementById(
+                "status-filter"
+            );
+
+
+        if (statusFilter) {
+
+            statusFilter.addEventListener(
+                "change",
+                filterAlerts
+            );
+        }
+
+
+        // =============================================
+        // REFRESH BUTTON
+        // =============================================
+
+        const refreshButton =
+            document.getElementById(
+                "refresh-button"
+            );
+
+
+        if (refreshButton) {
+
+            refreshButton.addEventListener(
+                "click",
+                refreshDashboard
+            );
+        }
+
+    }
 );

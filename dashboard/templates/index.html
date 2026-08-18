@@ -78,7 +78,8 @@
             </div>
 
             <button
-                class="refresh-btn"
+                id="refresh-button"
+                type="button"
                 onclick="loadDashboard()"
             >
                 ↻ Refresh
@@ -235,12 +236,36 @@
                     <thead>
 
                     <tr>
-                        <th>Alert ID</th>
-                        <th>Severity</th>
-                        <th>Title</th>
-                        <th>Source IP</th>
-                        <th>Threat</th>
-                        <th>Status</th>
+                        <th onclick="sortAlerts('alert_id')">
+                                                                     ALERT ID
+                                                                     <span class="sort-icon">↕</span>
+                                                            </th>
+
+                                                            <th onclick="sortAlerts('severity')">
+                                                                      SEVERITY
+                                                                     <span class="sort-icon">↕</span>
+                                                            </th>
+
+                                                            <th onclick="sortAlerts('title')">
+                                                                     TITLE
+                                                                     <span class="sort-icon">↕</span>
+                                                            </th>
+
+                                                            <th onclick="sortAlerts('source_ip')">
+                                                                     SOURCE IP
+                                                                     <span class="sort-icon">↕</span>
+                                                            </th>
+
+                                                            <th onclick="sortAlerts('threat_type')">
+                                                                     THREAT
+                                                                     <span class="sort-icon">↕</span>
+                                                            </th>
+
+                                                            <th onclick="sortAlerts('status')">
+                                                                     STATUS
+                                                                     <span class="sort-icon">↕</span>
+                                                            </th>
+
                     </tr>
 
                     </thead>
